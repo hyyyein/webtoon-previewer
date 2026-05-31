@@ -18,6 +18,7 @@
 - 숫자 자연 정렬: `1.png`, `2.png`, `10.png` 순서
 - 파일 순서 편집창에서 드래그 앤 드롭 및 위/아래 버튼으로 순서 변경
 - 수동 파일 순서 저장 및 최근 항목 복원
+- 현재 표시폭 기준으로 이어붙인 PNG 저장, 너무 긴 원고는 자동 분할 저장
 - PSD 합성 미리보기 직접 추출, 실패 시 ImageMagick 변환 재시도
 - CLIP 내부 `CanvasPreview` 또는 PNG/JPEG 내장 미리보기 추출
 - macOS `.dmg` 패키징
@@ -41,6 +42,8 @@ npm run release
 
 생성된 `.dmg` 파일은 `release/` 폴더에 만들어집니다. 새 DMG를 만들면 이전 버전 DMG와 `.blockmap`은 자동 삭제되고 현재 버전만 남습니다.
 
+PNG 저장은 선택한 표시폭을 그대로 사용합니다. 예를 들어 표시폭이 360이면 저장 PNG도 360px 폭입니다. 원고가 너무 길면 macOS/브라우저 캔버스 한계를 피하기 위해 `-01`, `-02`처럼 여러 PNG로 자동 분할됩니다.
+
 ## Development
 
 ```bash
@@ -60,6 +63,7 @@ npm run build
 - `Command+O`: 파일/폴더 열기
 - `Command+Shift+O`: 파일 순서 편집
 - `Command+Enter`: 뷰어로 보기
+- `Command+Shift+E`: 이어붙인 PNG 저장
 - `Esc`: 뷰어 모드 또는 순서 편집창 닫기
 
 ## Format Support Notes

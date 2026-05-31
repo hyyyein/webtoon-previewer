@@ -98,6 +98,41 @@ ipcMain.handle("window:fit-content-width", (event, width: number): void => {
   targetWindow.setContentSize(nextWidth, contentBounds.height);
 });
 
+ipcMain.handle("export:choose-png-path", async (event, defaultName: unknown): Promise<string | null> => {
+  const targetWindow = BrowserWindow.fromWebContents(event.sender);
+  if (!targetWindow || targetWindow.isDestroyed()) {
+    return null;
+  }
+
+  const result = await dialog.showSaveDialog(targetWindow, {
+    title: "이어붙인 PNG 저장",
+    buttonLabel: "저장",
+    defaultPath: normalizeDefaultPngName(defaultName),
+    filters: [
+      { name: "PNG 이미지", extensions: ["png"] },
+      { name: "모든 파일", extensions: ["*"] }
+    ]
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  return normalizePngExportPath(result.filePath);
+});
+
+ipcMain.handle("export:write-png-file", async (_event, filePath: unknown, data: unknown): Promise<void> => {
+  const targetPath = normalizePngExportPath(filePath);
+  const pngData = normalizePngExportData(data);
+
+  if (!pngData.subarray(0, pngSignature.length).equals(pngSignature)) {
+    throw new Error("PNG 데이터가 아닙니다.");
+  }
+
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await writeFile(targetPath, pngData);
+});
+
 function createMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
@@ -135,6 +170,11 @@ function createMenu() {
         {
           label: "기본 정렬로 되돌리기",
           click: () => sendAppCommand("reset-natural")
+        },
+        {
+          label: "PNG로 내보내기",
+          accelerator: "CommandOrControl+Shift+E",
+          click: () => sendAppCommand("export-png")
         }
       ]
     },
@@ -160,6 +200,46 @@ function createMenu() {
   ];
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+function normalizeDefaultPngName(value: unknown) {
+  const fallback = "webtoon-preview.png";
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const cleaned = value
+    .trim()
+    .replace(/[\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ");
+  if (!cleaned) {
+    return fallback;
+  }
+
+  return cleaned.toLowerCase().endsWith(".png") ? cleaned : `${cleaned}.png`;
+}
+
+function normalizePngExportPath(value: unknown) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("저장할 PNG 경로가 올바르지 않습니다.");
+  }
+
+  const trimmed = value.trim();
+  return path.extname(trimmed).toLowerCase() === ".png" ? trimmed : `${trimmed}.png`;
+}
+
+function normalizePngExportData(value: unknown) {
+  if (value instanceof Uint8Array) {
+    return Buffer.from(value);
+  }
+  if (value instanceof ArrayBuffer) {
+    return Buffer.from(value);
+  }
+  if (ArrayBuffer.isView(value)) {
+    return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+  }
+
+  throw new Error("저장할 PNG 데이터가 올바르지 않습니다.");
 }
 
 function sendAppCommand(command: AppCommand) {

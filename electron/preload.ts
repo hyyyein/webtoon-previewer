@@ -6,6 +6,9 @@ const api = {
   importPaths: (paths: string[], sortMode?: SortMode): Promise<ImportResult> =>
     ipcRenderer.invoke("files:import-paths", paths, sortMode),
   fitWindowToWidth: (width: number): Promise<void> => ipcRenderer.invoke("window:fit-content-width", width),
+  chooseExportPath: (defaultName: string): Promise<string | null> => ipcRenderer.invoke("export:choose-png-path", defaultName),
+  writePngFile: (filePath: string, data: Uint8Array): Promise<void> =>
+    ipcRenderer.invoke("export:write-png-file", filePath, data),
   onImportResult: (callback: (result: ImportResult) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, result: ImportResult) => callback(result);
     ipcRenderer.on("files:loaded", listener);

@@ -1,5 +1,5 @@
 export type SortMode = "natural" | "manual";
-export type AppCommand = "enter-reader" | "open-order-editor" | "reset-natural";
+export type AppCommand = "enter-reader" | "open-order-editor" | "reset-natural" | "export-png";
 
 export type ImageKind = "jpg" | "png" | "psd" | "clip";
 

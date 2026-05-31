@@ -5,6 +5,20 @@ import type { ImageItem, ImportResult, SortMode } from "./types";
 type BackgroundKey = "white" | "gray" | "black";
 type WidthMode = "fixed" | "fitWindow" | "fitImage";
 type ViewMode = "editor" | "reader";
+type ExportableImageItem = ImageItem & { src: string; width: number; height: number; status: "ready" };
+
+interface ExportSegment {
+  item: ExportableImageItem;
+  sourceY: number;
+  sourceHeight: number;
+  targetY: number;
+  targetHeight: number;
+}
+
+interface ExportPart {
+  height: number;
+  segments: ExportSegment[];
+}
 
 const fixedWidths = [360, 430, 500, 690, 800, 1000, 1200];
 const backgroundValues: Record<BackgroundKey, string> = {
@@ -15,6 +29,8 @@ const backgroundValues: Record<BackgroundKey, string> = {
 const settingsKey = "webtoon-previewer-settings";
 const recentKey = "webtoon-previewer-recent-source";
 const manualOrderPrefix = "webtoon-previewer-manual-order:";
+const maxExportCanvasPixels = 48_000_000;
+const maxExportPartHeight = 30_000;
 
 interface StoredSettings {
   background?: BackgroundKey;
@@ -321,6 +337,61 @@ export default function App() {
     setViewMode("editor");
   }
 
+  async function exportMergedPng() {
+    if (isBusy) {
+      return;
+    }
+
+    const exportItems = items.filter(isExportableImageItem);
+    if (exportItems.length === 0) {
+      setNotice("PNG로 저장할 수 있는 이미지가 없습니다.");
+      return;
+    }
+
+    const exportWidth = Math.max(1, Math.round(widthMode === "fitWindow" ? widestImage : displayWidth));
+    const partHeightLimit = Math.max(1, Math.min(maxExportPartHeight, Math.floor(maxExportCanvasPixels / exportWidth)));
+    if (partHeightLimit < 256) {
+      setNotice("표시폭이 너무 넓어 PNG 저장이 어렵습니다. 표시폭을 줄인 뒤 다시 시도하세요.");
+      return;
+    }
+
+    const parts = buildExportParts(exportItems, exportWidth, partHeightLimit);
+    if (parts.length === 0) {
+      setNotice("PNG로 저장할 이미지 높이를 계산하지 못했습니다.");
+      return;
+    }
+
+    setIsBusy(true);
+    setNotice("이어붙인 PNG 저장 위치를 고르세요.");
+    await waitForPaint();
+
+    try {
+      const targetPath = await window.webtoonPreviewer.chooseExportPath(makeExportFileName(sourceLabel));
+      if (!targetPath) {
+        setNotice("PNG 저장이 취소되었습니다.");
+        return;
+      }
+
+      for (const [index, part] of parts.entries()) {
+        setNotice(`이어붙인 PNG 저장 중입니다. ${index + 1}/${parts.length}`);
+        await waitForPaint();
+        const data = await renderExportPart(part, exportWidth, backgroundValues[background]);
+        await window.webtoonPreviewer.writePngFile(makePartPath(targetPath, index, parts.length), data);
+      }
+
+      const savedName = fileNameFromPath(targetPath);
+      setNotice(
+        parts.length === 1
+          ? `PNG 저장 완료: ${savedName} (${exportWidth}px 폭)`
+          : `PNG ${parts.length}개로 나누어 저장 완료: ${savedName} (${exportWidth}px 폭)`
+      );
+    } catch (error) {
+      setNotice(`PNG 저장 실패: ${getErrorMessage(error)}`);
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   function handleAppCommand(command: AppCommand) {
     if (command === "enter-reader") {
       enterReaderMode();
@@ -330,6 +401,9 @@ export default function App() {
     }
     if (command === "reset-natural") {
       void resetNaturalOrder();
+    }
+    if (command === "export-png") {
+      void exportMergedPng();
     }
   }
 
@@ -463,6 +537,9 @@ export default function App() {
             <button type="button" onClick={() => window.webtoonPreviewer.fitWindowToWidth(displayWidth)} disabled={isBusy || items.length === 0}>
               창 맞춤
             </button>
+            <button type="button" onClick={() => void exportMergedPng()} disabled={isBusy || readyCount === 0}>
+              PNG 저장
+            </button>
             <button type="button" onClick={() => setPanelOpen((value) => !value)} disabled={isBusy}>
               {panelOpen ? "패널 접기" : "패널 열기"}
             </button>
@@ -529,6 +606,156 @@ export default function App() {
       {isDragging && <div className="drop-overlay">여기에 놓으면 바로 미리보기</div>}
     </main>
   );
+}
+
+function isExportableImageItem(item: ImageItem): item is ExportableImageItem {
+  return item.status === "ready" && Boolean(item.src) && isPositiveNumber(item.width) && isPositiveNumber(item.height);
+}
+
+function isPositiveNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function buildExportParts(items: ExportableImageItem[], exportWidth: number, partHeightLimit: number): ExportPart[] {
+  const parts: ExportPart[] = [];
+  let current: ExportPart = { height: 0, segments: [] };
+
+  const pushCurrent = () => {
+    if (current.segments.length > 0) {
+      parts.push(current);
+    }
+    current = { height: 0, segments: [] };
+  };
+
+  for (const item of items) {
+    const scale = exportWidth / item.width;
+    const fullTargetHeight = Math.max(1, Math.round(item.height * scale));
+    let consumedTargetHeight = 0;
+
+    while (consumedTargetHeight < fullTargetHeight) {
+      if (current.height >= partHeightLimit) {
+        pushCurrent();
+      }
+
+      const remainingPartHeight = partHeightLimit - current.height;
+      const remainingItemHeight = fullTargetHeight - consumedTargetHeight;
+      const targetHeight = Math.min(remainingPartHeight, remainingItemHeight);
+      if (targetHeight <= 0) {
+        pushCurrent();
+        continue;
+      }
+
+      current.segments.push({
+        item,
+        sourceY: consumedTargetHeight / scale,
+        sourceHeight: targetHeight / scale,
+        targetY: current.height,
+        targetHeight
+      });
+      current.height += targetHeight;
+      consumedTargetHeight += targetHeight;
+    }
+  }
+
+  pushCurrent();
+  return parts;
+}
+
+async function renderExportPart(part: ExportPart, exportWidth: number, backgroundColor: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = exportWidth;
+  canvas.height = Math.max(1, part.height);
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("PNG 캔버스를 만들 수 없습니다.");
+  }
+
+  context.fillStyle = backgroundColor;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+
+  const imageCache = new Map<string, HTMLImageElement>();
+  try {
+    for (const segment of part.segments) {
+      let image = imageCache.get(segment.item.id);
+      if (!image) {
+        image = await loadHtmlImage(segment.item.src);
+        imageCache.set(segment.item.id, image);
+      }
+
+      const sourceScaleY = image.naturalHeight / segment.item.height;
+      context.drawImage(
+        image,
+        0,
+        segment.sourceY * sourceScaleY,
+        image.naturalWidth,
+        segment.sourceHeight * sourceScaleY,
+        0,
+        segment.targetY,
+        exportWidth,
+        segment.targetHeight
+      );
+    }
+
+    const blob = await canvasToPngBlob(canvas);
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    imageCache.clear();
+    canvas.width = 1;
+    canvas.height = 1;
+  }
+}
+
+function loadHtmlImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("이미지를 PNG 저장용으로 읽지 못했습니다."));
+    image.src = src;
+  });
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error("PNG 데이터를 만들지 못했습니다. 이미지가 너무 클 수 있습니다."));
+      }
+    }, "image/png");
+  });
+}
+
+function makeExportFileName(sourceLabel: string) {
+  const cleaned = sourceLabel
+    .replace(/[\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return `${cleaned && cleaned !== "선택 없음" ? cleaned : "webtoon-preview"}.png`;
+}
+
+function makePartPath(targetPath: string, partIndex: number, totalParts: number) {
+  const pngPath = targetPath.toLowerCase().endsWith(".png") ? targetPath : `${targetPath}.png`;
+  if (totalParts === 1) {
+    return pngPath;
+  }
+
+  const dotIndex = pngPath.toLowerCase().lastIndexOf(".png");
+  const digits = Math.max(2, String(totalParts).length);
+  return `${pngPath.slice(0, dotIndex)}-${String(partIndex + 1).padStart(digits, "0")}.png`;
+}
+
+function fileNameFromPath(filePath: string) {
+  return filePath.split(/[\/]/).pop() ?? filePath;
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function PreviewItem({ item }: { item: ImageItem }) {
