@@ -1,6 +1,6 @@
 {
   "name": "webtoon-previewer-mac",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "private": true,
   "description": "A macOS desktop previewer for continuous webtoon image review.",
   "author": "hyyyein",
