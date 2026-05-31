@@ -22,6 +22,7 @@
 - PSD 합성 미리보기 직접 추출, 실패 시 ImageMagick 변환 재시도
 - CLIP 내부 `CanvasPreview` 또는 PNG/JPEG 내장 미리보기 추출
 - PSD/CLIP 원본 파일을 macOS 기본 앱(Photoshop, Clip Studio Paint 등)으로 바로 열기
+- 이미지에 마우스를 올리면 각 이미지 시작 지점 상단에 파일명 표시
 - macOS `.dmg` 패키징
 
 ## Tech Stack

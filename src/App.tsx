@@ -785,6 +785,9 @@ function PreviewItem({ item, onOpenOriginal }: { item: ImageItem; onOpenOriginal
 
   return (
     <div className="preview-frame">
+      <div className="file-name-badge" title={item.name}>
+        {item.index + 1}. {item.name}
+      </div>
       <img className="preview-image" src={item.src} alt={item.name} loading="lazy" draggable={false} />
       {openButton}
     </div>

@@ -223,6 +223,33 @@ input[type="checkbox"] {
   line-height: 0;
 }
 
+.file-name-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  min-height: 24px;
+  padding: 4px 92px 4px 8px;
+  overflow: hidden;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.74);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.preview-frame:hover .file-name-badge,
+.preview-frame:focus-within .file-name-badge {
+  opacity: 1;
+}
+
 .open-original-button {
   position: absolute;
   top: 6px;
