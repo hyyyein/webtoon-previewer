@@ -1,0 +1,54 @@
+{
+  "name": "webtoon-previewer-mac",
+  "version": "1.2.4",
+  "private": true,
+  "description": "A macOS desktop previewer for continuous webtoon image review.",
+  "author": "hyyyein",
+  "main": "dist-electron/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:electron && node scripts/dev.mjs",
+    "make:icon": "node scripts/make-icon.mjs",
+    "build": "npm run build:electron && vite build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "package:mac": "npm run make:icon && npm run build && electron-builder --mac dmg --universal && npm run cleanup:release",
+    "package:mac:arm64": "npm run make:icon && npm run build && electron-builder --mac dmg --arm64 && npm run cleanup:release",
+    "release": "npm run typecheck && npm run package:mac",
+    "typecheck": "tsc --noEmit",
+    "cleanup:release": "node scripts/cleanup-old-releases.mjs"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^37.0.0",
+    "electron-builder": "^26.0.0",
+    "typescript": "^5.8.0",
+    "vite": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.local.webtoonpreviewer",
+    "productName": "Webtoon Previewer",
+    "artifactName": "WebtoonPreviewer-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg"
+      ]
+    }
+  }
+}
