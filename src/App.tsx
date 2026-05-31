@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppCommand } from "./global";
 import type { ImageItem, ImportResult, SortMode } from "./types";
 
-type BackgroundKey = "white" | "gray" | "black";
+type BackgroundKey = "white" | "black";
 type WidthMode = "fixed" | "fitWindow" | "fitImage";
 type ViewMode = "editor" | "reader";
 type ExportableImageItem = ImageItem & { src: string; width: number; height: number; status: "ready" };
@@ -23,7 +23,6 @@ interface ExportPart {
 const fixedWidths = [360, 430, 500, 690, 800, 1000, 1200];
 const backgroundValues: Record<BackgroundKey, string> = {
   white: "#ffffff",
-  gray: "#8b8b8b",
   black: "#050505"
 };
 const settingsKey = "webtoon-previewer-settings";
@@ -337,6 +336,16 @@ export default function App() {
     setViewMode("editor");
   }
 
+  async function openOriginalFile(item: ImageItem) {
+    setNotice(`${sourceAppLabel(item)}으로 원본 파일을 여는 중입니다.`);
+    try {
+      await window.webtoonPreviewer.openOriginalFile(item.path);
+      setNotice(`${item.name} 원본 파일을 열었습니다.`);
+    } catch (error) {
+      setNotice(`원본 파일 열기 실패: ${getErrorMessage(error)}`);
+    }
+  }
+
   async function exportMergedPng() {
     if (isBusy) {
       return;
@@ -517,9 +526,6 @@ export default function App() {
               <button className={background === "white" ? "selected" : ""} type="button" onClick={() => setBackground("white")} disabled={isBusy}>
                 흰색
               </button>
-              <button className={background === "gray" ? "selected" : ""} type="button" onClick={() => setBackground("gray")} disabled={isBusy}>
-                회색
-              </button>
               <button className={background === "black" ? "selected" : ""} type="button" onClick={() => setBackground("black")} disabled={isBusy}>
                 검정
               </button>
@@ -533,9 +539,6 @@ export default function App() {
             </button>
             <button type="button" onClick={() => setWidthMode("fitImage")} disabled={isBusy || items.length === 0}>
               원본 폭
-            </button>
-            <button type="button" onClick={() => window.webtoonPreviewer.fitWindowToWidth(displayWidth)} disabled={isBusy || items.length === 0}>
-              창 맞춤
             </button>
             <button type="button" onClick={() => void exportMergedPng()} disabled={isBusy || readyCount === 0}>
               PNG 저장
@@ -582,7 +585,7 @@ export default function App() {
             style={viewMode === "reader" ? readerPreviewStyle : editorPreviewStyle}
           >
             {items.map((item) => (
-              <PreviewItem key={item.id} item={item} />
+              <PreviewItem key={item.id} item={item} onOpenOriginal={openOriginalFile} />
             ))}
           </div>
         )}
@@ -758,17 +761,44 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-function PreviewItem({ item }: { item: ImageItem }) {
+function PreviewItem({ item, onOpenOriginal }: { item: ImageItem; onOpenOriginal: (item: ImageItem) => void }) {
+  const openButton = (
+    <button
+      className="open-original-button"
+      type="button"
+      onClick={() => onOpenOriginal(item)}
+      title="macOS 기본 앱으로 원본 파일 열기"
+    >
+      원본 열기
+    </button>
+  );
+
   if (item.status !== "ready" || !item.src) {
     return (
       <div className="error-item">
         <strong>{item.name}</strong>
         <span>{item.message ?? "이 파일은 표시할 수 없습니다."}</span>
+        {openButton}
       </div>
     );
   }
 
-  return <img className="preview-image" src={item.src} alt={item.name} loading="lazy" draggable={false} />;
+  return (
+    <div className="preview-frame">
+      <img className="preview-image" src={item.src} alt={item.name} loading="lazy" draggable={false} />
+      {openButton}
+    </div>
+  );
+}
+
+function sourceAppLabel(item: ImageItem) {
+  if (item.kind === "psd") {
+    return "Photoshop 또는 PSD 기본 앱";
+  }
+  if (item.kind === "clip") {
+    return "Clip Studio 또는 CLIP 기본 앱";
+  }
+  return "macOS 기본 앱";
 }
 
 function OrderEditor({
@@ -962,7 +992,7 @@ function readStoredSettings(): StoredSettings {
 }
 
 function isBackgroundKey(value: unknown): value is BackgroundKey {
-  return value === "white" || value === "gray" || value === "black";
+  return value === "white" || value === "black";
 }
 
 function isWidthMode(value: unknown): value is WidthMode {

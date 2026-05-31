@@ -6,6 +6,7 @@ const api = {
   importPaths: (paths: string[], sortMode?: SortMode): Promise<ImportResult> =>
     ipcRenderer.invoke("files:import-paths", paths, sortMode),
   fitWindowToWidth: (width: number): Promise<void> => ipcRenderer.invoke("window:fit-content-width", width),
+  openOriginalFile: (filePath: string): Promise<void> => ipcRenderer.invoke("files:open-original", filePath),
   chooseExportPath: (defaultName: string): Promise<string | null> => ipcRenderer.invoke("export:choose-png-path", defaultName),
   writePngFile: (filePath: string, data: Uint8Array): Promise<void> =>
     ipcRenderer.invoke("export:write-png-file", filePath, data),

@@ -8,6 +8,7 @@ declare global {
       openFolder: () => Promise<ImportResult | null>;
       importPaths: (paths: string[], sortMode?: SortMode) => Promise<ImportResult>;
       fitWindowToWidth: (width: number) => Promise<void>;
+      openOriginalFile: (filePath: string) => Promise<void>;
       chooseExportPath: (defaultName: string) => Promise<string | null>;
       writePngFile: (filePath: string, data: Uint8Array) => Promise<void>;
       onImportResult: (callback: (result: ImportResult) => void) => () => void;

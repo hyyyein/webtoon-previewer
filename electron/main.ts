@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell } from "electron";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
@@ -86,6 +86,19 @@ ipcMain.handle(
     return importPaths(normalizeImportPaths(paths), normalizeSortMode(sortMode));
   }
 );
+
+ipcMain.handle("files:open-original", async (_event, filePath: unknown): Promise<void> => {
+  if (typeof filePath !== "string" || filePath.trim().length === 0) {
+    throw new Error("열 원본 파일 경로가 올바르지 않습니다.");
+  }
+
+  const targetPath = filePath.trim();
+  await access(targetPath);
+  const errorMessage = await shell.openPath(targetPath);
+  if (errorMessage) {
+    throw new Error(errorMessage);
+  }
+});
 
 ipcMain.handle("window:fit-content-width", (event, width: number): void => {
   const targetWindow = BrowserWindow.fromWebContents(event.sender);
