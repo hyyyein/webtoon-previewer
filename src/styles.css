@@ -246,6 +246,7 @@ input[type="checkbox"] {
 
 .empty-state {
   align-self: center;
+  margin: auto;
   display: grid;
   gap: 10px;
   justify-items: center;
