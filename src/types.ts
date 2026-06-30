@@ -1,6 +1,6 @@
 export type SortMode = "natural" | "manual";
 
-export type ImageKind = "jpg" | "png" | "psd" | "clip";
+export type ImageKind = "jpg" | "png" | "webp" | "psd" | "clip";
 
 export type ImageStatus = "ready" | "error" | "unsupported";
 

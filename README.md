@@ -8,7 +8,7 @@
 
 ## Features
 
-- JPG/PNG 폴더 열기
+- JPG/PNG/WebP/WBPB 폴더 열기
 - Finder에서 폴더나 여러 이미지 드래그 앤 드롭
 - 이미지 사이 `margin/padding/gap` 0으로 연속 표시
 - 표시폭 선택: 360, 430, 500, 690, 800, 1000, 1200px
@@ -70,7 +70,7 @@ npm run build
 
 ## Format Support Notes
 
-- JPG/PNG: 브라우저 네이티브 표시를 사용합니다.
+- JPG/PNG/WebP/WBPB: 브라우저 네이티브 표시를 사용합니다.
 - PSD: 8-bit PSD 합성 이미지를 직접 추출하고, 실패하면 설치된 ImageMagick을 사용합니다. PSD 구조에 따라 일부 파일은 표시되지 않을 수 있습니다.
 - CLIP: Clip Studio Paint의 독점 포맷 전체를 렌더링하는 것이 아니라, 파일 내부 `CanvasPreview` 또는 내장 PNG/JPEG 미리보기를 추출합니다. 파일 저장 방식에 따라 실패할 수 있습니다.
 

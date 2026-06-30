@@ -8,8 +8,8 @@ import { pathToFileURL } from "node:url";
 import zlib from "node:zlib";
 import type { AppCommand, ImageItem, ImportResult, SortMode } from "./types.js";
 
-const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".psd", ".clip"]);
-const browserExtensions = new Set([".jpg", ".jpeg", ".png"]);
+const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".wbpb", ".psd", ".clip"]);
+const browserExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".wbpb"]);
 const maxPsdPixels = 40_000_000;
 const maxHeavySourceBytes = 512 * 1024 * 1024;
 const maxImportEntries = 500;
@@ -278,7 +278,7 @@ async function chooseFolder(parentWindow: BrowserWindow): Promise<ImportResult |
     title: "웹툰 이미지 파일 또는 폴더 열기",
     properties: ["openFile", "openDirectory", "multiSelections"],
     filters: [
-      { name: "지원 이미지", extensions: ["jpg", "jpeg", "png", "psd", "clip"] },
+      { name: "지원 이미지", extensions: ["jpg", "jpeg", "png", "webp", "wbpb", "psd", "clip"] },
       { name: "모든 파일", extensions: ["*"] }
     ]
   });
@@ -342,7 +342,7 @@ async function createImageItem(filePath: string, index: number): Promise<ImageIt
     return {
       ...base,
       status: "ready",
-      kind: extension === ".png" ? "png" : "jpg",
+      kind: extension === ".png" ? "png" : extension === ".webp" || extension === ".wbpb" ? "webp" : "jpg",
       src: pathToFileURL(filePath).toString(),
       width: size?.width,
       height: size?.height
